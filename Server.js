@@ -157,7 +157,8 @@ app.get('/api/newsletter', async (req, res) => {
 // ✅ Upload Banner
 app.post('/api/banner', upload.single('banner'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const imageUrl = `${DOMAIN}/uploads/${req.file.filename}`; // ✅ Use HTTPS domain
+  const imageUrl = `https://api.366daysfruit.com/uploads/${req.file.filename}`;
+ // ✅ Use HTTPS domain
   try {
     const newBanner = new BannerModel({ imageUrl });
     await newBanner.save();
