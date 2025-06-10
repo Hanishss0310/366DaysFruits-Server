@@ -16,7 +16,7 @@ import OrderModel from './models/Order.js';
 
 const app = express();
 const PORT = 4000;
-const DOMAIN = 'https://api.366daysfruit.com'; // ✅ your production domain
+const DOMAIN = 'https://api.366daysfruit.com'; // ✅ use this throughout
 
 // ✅ Handle __dirname for ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -44,7 +44,6 @@ const allowedOrigins = [
   'https://www.366daysfruit.com',
   'https://366daysfruit.web.app'
 ];
-
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -157,8 +156,7 @@ app.get('/api/newsletter', async (req, res) => {
 // ✅ Upload Banner
 app.post('/api/banner', upload.single('banner'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const imageUrl = `https://api.366daysfruit.com/uploads/${req.file.filename}`;
- // ✅ Use HTTPS domain
+  const imageUrl = `${DOMAIN}/uploads/${req.file.filename}`;  // ✅ FIXED: using DOMAIN
   try {
     const newBanner = new BannerModel({ imageUrl });
     await newBanner.save();
