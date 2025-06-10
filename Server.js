@@ -16,6 +16,7 @@ import OrderModel from './models/Order.js';
 
 const app = express();
 const PORT = 4000;
+const DOMAIN = 'https://api.366daysfruit.com'; // ✅ your production domain
 
 // ✅ Handle __dirname for ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -28,7 +29,7 @@ if (!fs.existsSync(uploadsDir)) {
   console.log("📂 'uploads' folder created");
 }
 
-// ✅ MongoDB Connection (hardcoded)
+// ✅ MongoDB Connection
 mongoose.connect('mongodb://127.0.0.1:27017/366DaysFruits', {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -66,7 +67,7 @@ const upload = multer({ storage });
 
 /* ------------------- API ROUTES ------------------- */
 
-// ✅ Register user
+// ✅ User Registration
 app.post('/api/register', async (req, res) => {
   try {
     const { email, firstName, lastName, phone, shopName } = req.body;
@@ -81,7 +82,6 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// ✅ Get all users
 app.get('/api/registers', async (req, res) => {
   try {
     const users = await RegisterModel.find();
@@ -91,7 +91,7 @@ app.get('/api/registers', async (req, res) => {
   }
 });
 
-// ✅ Add new fruit
+// ✅ Fruits
 app.post('/api/fruits', upload.single('image'), async (req, res) => {
   try {
     const { name, weight, pieces, boxWeight, boxPrice, rating, quantity } = req.body;
@@ -104,7 +104,6 @@ app.post('/api/fruits', upload.single('image'), async (req, res) => {
   }
 });
 
-// ✅ Get all fruits
 app.get('/api/fruits', async (req, res) => {
   try {
     const fruits = await ProductModel.find();
@@ -114,7 +113,6 @@ app.get('/api/fruits', async (req, res) => {
   }
 });
 
-// ✅ Delete fruit
 app.delete('/api/fruits/:id', async (req, res) => {
   try {
     const deleted = await ProductModel.findByIdAndDelete(req.params.id);
@@ -130,7 +128,7 @@ app.delete('/api/fruits/:id', async (req, res) => {
   }
 });
 
-// ✅ Newsletter subscription
+// ✅ Newsletter
 app.post('/api/newsletter', async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required' });
@@ -145,7 +143,6 @@ app.post('/api/newsletter', async (req, res) => {
   }
 });
 
-// ✅ Get newsletter emails
 app.get('/api/newsletter', async (req, res) => {
   try {
     const emails = await NewsletterModel.find();
@@ -155,10 +152,10 @@ app.get('/api/newsletter', async (req, res) => {
   }
 });
 
-// ✅ Upload banner
+// ✅ Upload Banner
 app.post('/api/banner', upload.single('banner'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const imageUrl = `http://localhost:${PORT}/uploads/${req.file.filename}`;
+  const imageUrl = `${DOMAIN}/uploads/${req.file.filename}`; // ✅ Use HTTPS domain
   try {
     const newBanner = new BannerModel({ imageUrl });
     await newBanner.save();
@@ -179,7 +176,6 @@ app.post('/api/banner', upload.single('banner'), async (req, res) => {
   }
 });
 
-// ✅ Get banners
 app.get('/api/banners', async (req, res) => {
   try {
     const banners = await BannerModel.find().sort({ createdAt: 1 });
@@ -189,7 +185,7 @@ app.get('/api/banners', async (req, res) => {
   }
 });
 
-// ✅ Save order
+// ✅ Orders
 app.post('/api/order', async (req, res) => {
   try {
     const { name, address, phone, cartItems } = req.body;
@@ -223,7 +219,6 @@ app.post('/api/order', async (req, res) => {
   }
 });
 
-// ✅ Get all orders
 app.get('/api/order', async (req, res) => {
   try {
     const orders = await OrderModel.find();
@@ -254,7 +249,7 @@ app.get('/api/dashboard', async (req, res) => {
   }
 });
 
-// ✅ Get recent members
+// ✅ Recent members
 app.get('/api/members', async (req, res) => {
   try {
     const recentMembers = await RegisterModel.find({}, 'firstName lastName email phone').sort({ _id: -1 }).limit(10);
@@ -264,7 +259,7 @@ app.get('/api/members', async (req, res) => {
   }
 });
 
-// ✅ Start Server
+// ✅ Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on ${DOMAIN}`);
 });
