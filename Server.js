@@ -35,7 +35,7 @@ const allowedOrigins = [
   'https://daysfruits-userside.firebaseapp.com',
   'https://daysfruis-adminside.firebaseapp.com',
   'https://366daysfruit.com',
-  'https://www.366daysfruit.com' // in case user opens with www
+  'https://www.366daysfruit.com'
 ];
 
 app.use(cors({
@@ -59,7 +59,7 @@ mongoose.connect('mongodb://127.0.0.1:27017/366DaysFruits', {
 }).then(() => console.log('✅ MongoDB connected'))
   .catch((err) => console.error('❌ MongoDB connection error:', err));
 
-// Multer setup for file uploads
+// Multer setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
   filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
@@ -92,7 +92,7 @@ app.get('/api/registers', async (req, res) => {
   }
 });
 
-// ✅ Add new fruit product
+// ✅ Add fruit product
 app.post('/api/fruits', upload.single('image'), async (req, res) => {
   try {
     const { name, weight, pieces, boxWeight, boxPrice, rating, quantity } = req.body;
@@ -114,7 +114,22 @@ app.get('/api/fruits', async (req, res) => {
   }
 });
 
-// ✅ Newsletter subscription
+// ✅ Delete fruit
+app.delete('/api/fruits/:id', async (req, res) => {
+  try {
+    const product = await ProductModel.findById(req.params.id);
+    if (product?.image) {
+      const filePath = path.join(uploadsDir, product.image);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+    await ProductModel.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: 'Fruit deleted' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete fruit' });
+  }
+});
+
+// ✅ Newsletter
 app.post('/api/newsletter', async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required' });
@@ -138,7 +153,7 @@ app.get('/api/newsletter', async (req, res) => {
   }
 });
 
-// ✅ Upload banner
+// ✅ Banner upload
 app.post('/api/banner', upload.single('banner'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   const imageUrl = `http://localhost:${PORT}/uploads/${req.file.filename}`;
@@ -151,7 +166,7 @@ app.post('/api/banner', upload.single('banner'), async (req, res) => {
       const toDelete = allBanners.slice(0, allBanners.length - 5);
       for (const banner of toDelete) {
         const filePath = path.join(uploadsDir, path.basename(banner.imageUrl));
-        fs.unlink(filePath, (err) => err && console.error(err));
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
         await BannerModel.findByIdAndDelete(banner._id);
       }
     }
@@ -171,81 +186,50 @@ app.get('/api/banners', async (req, res) => {
   }
 });
 
-// ✅ Save new order
+// ✅ Save order
 app.post('/api/order', async (req, res) => {
   try {
-    console.log("✅ Order Received:", req.body);
-
     const { name, address, phone, cartItems } = req.body;
-
     if (!name || !address || !phone || !Array.isArray(cartItems) || cartItems.length === 0) {
       return res.status(400).json({ message: 'All fields are required' });
     }
-
     const items = cartItems.map(item => ({
       name: item.name,
       quantity: item.quantity,
       pricePerKg: item.boxPrice,
-      totalCost: item.quantity * item.boxPrice,
+      totalCost: item.quantity * item.boxPrice
     }));
-
     const totalAmount = items.reduce((sum, item) => sum + item.totalCost, 0);
-
-    const order = new OrderModel({
-      name,
-      address,
-      phone,
-      items,
-      totalAmount,
-      orderedAt: new Date(),
-    });
-
+    const order = new OrderModel({ name, address, phone, items, totalAmount, orderedAt: new Date() });
     await order.save();
-    console.log("✅ Order saved to DB");
     res.status(201).json({ message: 'Order saved successfully' });
   } catch (err) {
-    console.error('❌ Order Save Error:', err);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
 
-
-// ✅ GET all orders (FIXED LINE)
 app.get('/api/order', async (req, res) => {
   try {
-    const orders = await OrderModel.find(); // ✅ Use the imported OrderModel
-    res.json(orders); // ✅ Always returns an array
+    const orders = await OrderModel.find();
+    res.json(orders);
   } catch (error) {
-    console.error('Failed to fetch orders:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-
-// ✅ Dashboard Summary API
+// ✅ Dashboard summary
 app.get('/api/dashboard', async (req, res) => {
   try {
     const totalOrders = await OrderModel.countDocuments();
     const totalUsers = await RegisterModel.countDocuments();
     const totalItems = await ProductModel.countDocuments();
-
-    // Sum order values (mocked as 100 per order for example)
-    const totalIncome = totalOrders * 100; // Replace with real value if available
-
-    res.json({
-      totalIncome,
-      totalOrders,
-      totalUsers,
-      totalItems
-    });
+    const totalIncome = totalOrders * 100; // example
+    res.json({ totalIncome, totalOrders, totalUsers, totalItems });
   } catch (err) {
-    console.error('❌ Dashboard API error:', err);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
 
-
-// ✅ Get recent members (sorted by latest)
 app.get('/api/members', async (req, res) => {
   try {
     const recentMembers = await RegisterModel.find({}, 'firstName lastName email phone').sort({ _id: -1 }).limit(10);
@@ -254,8 +238,6 @@ app.get('/api/members', async (req, res) => {
     res.status(500).json({ message: 'Error fetching members' });
   }
 });
-
-
 
 // ✅ Start server
 app.listen(PORT, () => {
