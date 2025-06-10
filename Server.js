@@ -41,8 +41,10 @@ const allowedOrigins = [
   'https://daysfruits-userside.firebaseapp.com',
   'https://daysfruis-adminside.firebaseapp.com',
   'https://366daysfruit.com',
-  'https://www.366daysfruit.com'
+  'https://www.366daysfruit.com',
+  'https://366daysfruit.web.app'
 ];
+
 
 app.use(cors({
   origin: function (origin, callback) {
