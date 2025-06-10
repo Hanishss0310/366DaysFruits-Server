@@ -31,13 +31,25 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Middleware
+const allowedOrigins = [
+  'https://daysfruits-userside.firebaseapp.com',
+  'https://daysfruis-adminside.firebaseapp.com',
+  'https://366daysfruit.com',
+  'https://www.366daysfruit.com' // in case user opens with www
+];
+
 app.use(cors({
-  origin: [
-    "https://daysfruits-userside.firebaseapp.com",
-    "https://daysfruis-adminside.firebaseapp.com"
-  ],
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
-}));app.use(express.json());
+}));
+
+app.use(express.json());
 app.use('/uploads', express.static(uploadsDir));
 
 // MongoDB Connection
