@@ -182,25 +182,22 @@ app.post('/api/order', async (req, res) => {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
-    // Add price and totalCost to each item
     const items = cartItems.map(item => ({
       name: item.name,
       quantity: item.quantity,
       pricePerKg: item.boxPrice,
-      totalCost: item.quantity * item.boxPrice
+      totalCost: item.quantity * item.boxPrice,
     }));
 
-    // Calculate total order cost
     const totalAmount = items.reduce((sum, item) => sum + item.totalCost, 0);
 
-    // Save to DB
     const order = new OrderModel({
       name,
       address,
       phone,
       items,
       totalAmount,
-      orderedAt: new Date()
+      orderedAt: new Date(),
     });
 
     await order.save();
