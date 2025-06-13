@@ -13,7 +13,8 @@ import ProductModel from './models/ProductsSchema.js';
 import NewsletterModel from './models/NewsLetterSchema.js';
 import BannerModel from './models/BannerSchema.js';
 import OrderModel from './models/Order.js';
-import User from './models/User.js'; 
+import Register from './models/Register.js';
+
 
 
 const app = express();
@@ -262,40 +263,36 @@ app.get('/api/members', async (req, res) => {
   }
 });
 
-// 🚀 Signup Route
-app.post('/api/register', async (req, res) => {
+// Get all registered users
+app.get('/api/registers', async (req, res) => {
   try {
-    const { username, phone, password } = req.body;
-
-    // Validation
-    if (!username || !phone || !password) {
-      return res.status(400).json({ message: 'All fields are required' });
-    }
-
-    // Check if phone exists
-    const existing = await User.findOne({ phone });
-    if (existing) {
-      return res.status(400).json({ message: 'Mobile number already registered' });
-    }
-
-    // Save user
-    const newUser = new User({ username, phone, password });
-    await newUser.save();
-
-    res.status(201).json({ message: 'Signup successful!' });
+    const users = await Register.find();
+    res.json(users);
   } catch (err) {
-    console.error('Signup error:', err);
-    res.status(500).json({ message: 'Server error. Please try again.' });
+    res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
 
-// ✅ Fetch all users (for checking duplicates in frontend)
-app.get('/api/registers', async (req, res) => {
+// Register a new user
+app.post('/api/register', async (req, res) => {
+  const { username, phone, password } = req.body;
+
+  if (!username || !phone || !password) {
+    return res.status(400).json({ error: "All fields are required." });
+  }
+
   try {
-    const users = await User.find();
-    res.json(users);
+    const existingUser = await Register.findOne({ phone });
+    if (existingUser) {
+      return res.status(400).json({ error: "Mobile number already registered." });
+    }
+
+    const newUser = new Register({ username, phone, password });
+    await newUser.save();
+
+    res.status(201).json({ message: "User registered successfully!" });
   } catch (err) {
-    res.status(500).json({ message: 'Failed to fetch users' });
+    res.status(500).json({ error: "Registration failed." });
   }
 });
 
