@@ -13,7 +13,7 @@ import ProductModel from './models/ProductsSchema.js';
 import NewsletterModel from './models/NewsLetterSchema.js';
 import BannerModel from './models/BannerSchema.js';
 import OrderModel from './models/Order.js';
-import Register from './models/Register.js';
+import Register from './models/UserAuth.js'; // ✅ Import UserAuth Schema
 
 
 
