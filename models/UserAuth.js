@@ -1,22 +1,19 @@
-// models/Register.js
 import mongoose from 'mongoose';
 
 const registerSchema = new mongoose.Schema({
   username: {
     type: String,
-    required: true,
+    required: true
   },
   phone: {
     type: String,
     required: true,
-    unique: true,
+    unique: true
   },
   password: {
     type: String,
-    required: true,
+    required: true
   }
-}, {
-  timestamps: true
 });
 
 const Register = mongoose.model('Register', registerSchema);
