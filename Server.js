@@ -13,7 +13,7 @@ import ProductModel from './models/ProductsSchema.js';
 import NewsletterModel from './models/NewsLetterSchema.js';
 import BannerModel from './models/BannerSchema.js';
 import OrderModel from './models/Order.js';
-import UserAuth from './models/UserAuth.js';
+import User from './models/User.js'; 
 
 
 const app = express();
@@ -262,37 +262,40 @@ app.get('/api/members', async (req, res) => {
   }
 });
 
-// 🔐 User Signup
-app.post('/api/signup', async (req, res) => {
+// 🚀 Signup Route
+app.post('/api/register', async (req, res) => {
   try {
-    const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Username & Password required' });
+    const { username, phone, password } = req.body;
 
-    const exists = await UserAuth.findOne({ username });
-    if (exists) return res.status(400).json({ error: 'Username already exists' });
+    // Validation
+    if (!username || !phone || !password) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
 
-    const newUser = new UserAuth({ username, password });
+    // Check if phone exists
+    const existing = await User.findOne({ phone });
+    if (existing) {
+      return res.status(400).json({ message: 'Mobile number already registered' });
+    }
+
+    // Save user
+    const newUser = new User({ username, phone, password });
     await newUser.save();
-    res.status(201).json({ message: 'Signup successful' });
+
+    res.status(201).json({ message: 'Signup successful!' });
   } catch (err) {
-    res.status(500).json({ error: 'Signup failed' });
+    console.error('Signup error:', err);
+    res.status(500).json({ message: 'Server error. Please try again.' });
   }
 });
 
-// 🔐 User Login
-app.post('/api/login', async (req, res) => {
+// ✅ Fetch all users (for checking duplicates in frontend)
+app.get('/api/registers', async (req, res) => {
   try {
-    const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'All fields required' });
-
-    const user = await UserAuth.findOne({ username });
-    if (!user || user.password !== password) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    res.status(200).json({ message: 'Login successful' });
+    const users = await User.find();
+    res.json(users);
   } catch (err) {
-    res.status(500).json({ error: 'Login failed' });
+    res.status(500).json({ message: 'Failed to fetch users' });
   }
 });
 
