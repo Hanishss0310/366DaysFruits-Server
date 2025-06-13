@@ -13,13 +13,12 @@ import ProductModel from './models/ProductsSchema.js';
 import NewsletterModel from './models/NewsLetterSchema.js';
 import BannerModel from './models/BannerSchema.js';
 import OrderModel from './models/Order.js';
-import Register from './models/UserAuth.js'; // ✅ Login/Signup schema
 
 const app = express();
 const PORT = 4000;
-const DOMAIN = 'https://api.366daysfruit.com';
+const DOMAIN = 'https://api.366daysfruit.com'; // ✅ use this throughout
 
-// ✅ Handle __dirname in ES module
+// ✅ Handle __dirname for ES module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -30,7 +29,7 @@ if (!fs.existsSync(uploadsDir)) {
   console.log("📂 'uploads' folder created");
 }
 
-// ✅ Connect to MongoDB
+// ✅ MongoDB Connection
 mongoose.connect('mongodb://127.0.0.1:27017/366DaysFruits', {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -67,40 +66,9 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-/* ------------------- USER REGISTER (Dashboard login) ------------------- */
-app.get('/api/registers', async (req, res) => {
-  try {
-    const users = await Register.find();
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch users' });
-  }
-});
+/* ------------------- API ROUTES ------------------- */
 
-app.post('/api/registers', async (req, res) => {
-  const { username, phone, password } = req.body;
-
-  if (!username || !phone || !password) {
-    return res.status(400).json({ error: "All fields are required." });
-  }
-
-  try {
-    const existingUser = await Register.findOne({ phone });
-    if (existingUser) {
-      return res.status(400).json({ error: "Mobile number already registered." });
-    }
-
-    const newUser = new Register({ username, phone, password });
-    await newUser.save();
-    res.status(201).json({ message: "User registered successfully!" });
-  } catch (err) {
-    res.status(500).json({ error: "Registration failed." });
-  }
-});
-
-/* ------------------- Website APIs ------------------- */
-
-// ✅ Member Registration
+// ✅ User Registration
 app.post('/api/register', async (req, res) => {
   try {
     const { email, firstName, lastName, phone, shopName } = req.body;
@@ -115,7 +83,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-app.get('/api/registers-userside', async (req, res) => {
+app.get('/api/registers', async (req, res) => {
   try {
     const users = await RegisterModel.find();
     res.json(users);
@@ -185,10 +153,10 @@ app.get('/api/newsletter', async (req, res) => {
   }
 });
 
-// ✅ Banner Upload
+// ✅ Upload Banner
 app.post('/api/banner', upload.single('banner'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const imageUrl = `${DOMAIN}/uploads/${req.file.filename}`;
+  const imageUrl = `${DOMAIN}/uploads/${req.file.filename}`;  // ✅ FIXED: using DOMAIN
   try {
     const newBanner = new BannerModel({ imageUrl });
     await newBanner.save();
