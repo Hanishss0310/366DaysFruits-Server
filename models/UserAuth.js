@@ -1,10 +1,20 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const registerSchema = new mongoose.Schema({
-  username: String,
-  phone: { type: String, unique: true },
-  password: String,
+const userSchema = new mongoose.Schema({
+  username: {
+    type: String,
+    required: true,
+  },
+  phone: {
+    type: String,
+    unique: true,
+    required: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
 });
 
-const Register = mongoose.model('Register', registerSchema);
+const Register = mongoose.model("Register", userSchema);
 export default Register;

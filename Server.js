@@ -13,15 +13,13 @@ import ProductModel from './models/ProductsSchema.js';
 import NewsletterModel from './models/NewsLetterSchema.js';
 import BannerModel from './models/BannerSchema.js';
 import OrderModel from './models/Order.js';
-import Register from './models/UserAuth.js'; // ✅ Import UserAuth Schema
-
-
+import Register from './models/UserAuth.js'; // ✅ Login/Signup schema
 
 const app = express();
 const PORT = 4000;
-const DOMAIN = 'https://api.366daysfruit.com'; // ✅ use this throughout
+const DOMAIN = 'https://api.366daysfruit.com';
 
-// ✅ Handle __dirname for ES module
+// ✅ Handle __dirname in ES module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -32,7 +30,7 @@ if (!fs.existsSync(uploadsDir)) {
   console.log("📂 'uploads' folder created");
 }
 
-// ✅ MongoDB Connection
+// ✅ Connect to MongoDB
 mongoose.connect('mongodb://127.0.0.1:27017/366DaysFruits', {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -69,9 +67,40 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-/* ------------------- API ROUTES ------------------- */
+/* ------------------- USER REGISTER (Dashboard login) ------------------- */
+app.get('/api/registers', async (req, res) => {
+  try {
+    const users = await Register.find();
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
 
-// ✅ User Registration
+app.post('/api/registers', async (req, res) => {
+  const { username, phone, password } = req.body;
+
+  if (!username || !phone || !password) {
+    return res.status(400).json({ error: "All fields are required." });
+  }
+
+  try {
+    const existingUser = await Register.findOne({ phone });
+    if (existingUser) {
+      return res.status(400).json({ error: "Mobile number already registered." });
+    }
+
+    const newUser = new Register({ username, phone, password });
+    await newUser.save();
+    res.status(201).json({ message: "User registered successfully!" });
+  } catch (err) {
+    res.status(500).json({ error: "Registration failed." });
+  }
+});
+
+/* ------------------- Website APIs ------------------- */
+
+// ✅ Member Registration
 app.post('/api/register', async (req, res) => {
   try {
     const { email, firstName, lastName, phone, shopName } = req.body;
@@ -86,7 +115,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-app.get('/api/registers', async (req, res) => {
+app.get('/api/registers-userside', async (req, res) => {
   try {
     const users = await RegisterModel.find();
     res.json(users);
@@ -156,10 +185,10 @@ app.get('/api/newsletter', async (req, res) => {
   }
 });
 
-// ✅ Upload Banner
+// ✅ Banner Upload
 app.post('/api/banner', upload.single('banner'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const imageUrl = `${DOMAIN}/uploads/${req.file.filename}`;  // ✅ FIXED: using DOMAIN
+  const imageUrl = `${DOMAIN}/uploads/${req.file.filename}`;
   try {
     const newBanner = new BannerModel({ imageUrl });
     await newBanner.save();
@@ -262,40 +291,6 @@ app.get('/api/members', async (req, res) => {
     res.status(500).json({ message: 'Error fetching members' });
   }
 });
-
-// Get all registered users
-app.get('/api/registers', async (req, res) => {
-  try {
-    const users = await Register.find();
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch users' });
-  }
-});
-
-// Register a new user
-app.post('/api/registers', async (req, res) => {
-  const { username, phone, password } = req.body;
-
-  if (!username || !phone || !password) {
-    return res.status(400).json({ error: "All fields are required." });
-  }
-
-  try {
-    const existingUser = await Register.findOne({ phone });
-    if (existingUser) {
-      return res.status(400).json({ error: "Mobile number already registered." });
-    }
-
-    const newUser = new Register({ username, phone, password });
-    await newUser.save();
-
-    res.status(201).json({ message: "User registered successfully!" });
-  } catch (err) {
-    res.status(500).json({ error: "Registration failed." });
-  }
-});
-
 
 // ✅ Start server
 app.listen(PORT, () => {
