@@ -274,7 +274,7 @@ app.get('/api/registers', async (req, res) => {
 });
 
 // Register a new user
-app.post('/api/register', async (req, res) => {
+app.post('/api/registers', async (req, res) => {
   const { username, phone, password } = req.body;
 
   if (!username || !phone || !password) {
