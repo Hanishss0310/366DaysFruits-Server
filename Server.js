@@ -13,6 +13,8 @@ import ProductModel from './models/ProductsSchema.js';
 import NewsletterModel from './models/NewsLetterSchema.js';
 import BannerModel from './models/BannerSchema.js';
 import OrderModel from './models/Order.js';
+import UserAuth from './models/UserAuth.js';
+
 
 const app = express();
 const PORT = 4000;
@@ -259,6 +261,41 @@ app.get('/api/members', async (req, res) => {
     res.status(500).json({ message: 'Error fetching members' });
   }
 });
+
+// 🔐 User Signup
+app.post('/api/signup', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'Username & Password required' });
+
+    const exists = await UserAuth.findOne({ username });
+    if (exists) return res.status(400).json({ error: 'Username already exists' });
+
+    const newUser = new UserAuth({ username, password });
+    await newUser.save();
+    res.status(201).json({ message: 'Signup successful' });
+  } catch (err) {
+    res.status(500).json({ error: 'Signup failed' });
+  }
+});
+
+// 🔐 User Login
+app.post('/api/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'All fields required' });
+
+    const user = await UserAuth.findOne({ username });
+    if (!user || user.password !== password) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    res.status(200).json({ message: 'Login successful' });
+  } catch (err) {
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
 
 // ✅ Start server
 app.listen(PORT, () => {
