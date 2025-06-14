@@ -262,55 +262,55 @@ app.get('/api/members', async (req, res) => {
 });
 
 
-// GET all users
-app.get('/api/users', async (req, res) => {
-  try {
-    const users = await User.find({}, '-password'); // hide password
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ message: '❌ Server error' });
-  }
-});
-
-// POST - Signup
+// ✅ Signup route
 app.post('/api/users', async (req, res) => {
   try {
     const { username, phone, password } = req.body;
 
-    if (!username || !phone || !password) {
-      return res.status(400).json({ message: 'All fields are required' });
-    }
-
-    const userExists = await User.findOne({ phone });
-    if (userExists) {
-      return res.status(400).json({ message: 'Mobile number already registered' });
-    }
+    const existingUser = await User.findOne({ phone });
+    if (existingUser) return res.status(400).json({ message: 'Mobile number already registered.' });
 
     const newUser = new User({ username, phone, password });
     await newUser.save();
-    res.status(201).json({ message: 'User registered successfully' });
+    res.status(201).json({ message: 'User registered successfully!' });
   } catch (err) {
-    res.status(500).json({ message: '❌ Signup failed' });
+    res.status(500).json({ message: 'Server error while registering user.' });
   }
 });
 
-// POST - Login
+// ✅ Login route
 app.post('/api/users/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    const user = await User.findOne({ username, password });
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    const user = await User.findOne({ username });
+    if (!user) return res.status(401).json({ message: 'User not found.' });
+
+    if (user.password !== password) {
+      return res.status(401).json({ message: 'Invalid password.' });
     }
 
-    res.json({ success: true, user: { username: user.username, phone: user.phone } });
+    res.status(200).json({
+      message: 'Login successful',
+      user: {
+        username: user.username,
+        phone: user.phone
+      }
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: '❌ Server error' });
+    res.status(500).json({ message: 'Login failed.' });
   }
 });
 
-// ------------------------------------------------------------
+// ✅ GET all users (for signup validation)
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await User.find();
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching users' });
+  }
+});
 
 
 
