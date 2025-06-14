@@ -13,6 +13,7 @@ import ProductModel from './models/ProductsSchema.js';
 import NewsletterModel from './models/NewsLetterSchema.js';
 import BannerModel from './models/BannerSchema.js';
 import OrderModel from './models/Order.js';
+import User from './models/User.js'; // Make sure path is correct
 
 const app = express();
 const PORT = 4000;
@@ -259,6 +260,45 @@ app.get('/api/members', async (req, res) => {
     res.status(500).json({ message: 'Error fetching members' });
   }
 });
+
+
+// Register New User
+app.post('/api/users', async (req, res) => {
+  const { username, phone, password } = req.body;
+
+  if (!username || !phone || !password) {
+    return res.status(400).json({ message: 'All fields are required.' });
+  }
+
+  try {
+    const existingUser = await User.findOne({ phone });
+    if (existingUser) {
+      return res.status(409).json({ message: 'Mobile number already registered.' });
+    }
+
+    const newUser = new User({ username, phone, password });
+    await newUser.save();
+
+    res.status(201).json({ message: 'User registered successfully.' });
+  } catch (err) {
+    console.error('❌ Error registering user:', err);
+    res.status(500).json({ message: 'Server error during registration.' });
+  }
+});
+
+// Get All Users
+app.get('/api/users', async (req, res) => {
+  try {
+    const allUsers = await User.find();
+    res.json(allUsers);
+  } catch (err) {
+    console.error('❌ Error fetching users:', err);
+    res.status(500).json({ message: 'Error fetching users.' });
+  }
+});
+
+
+
 
 // ✅ Start server
 app.listen(PORT, () => {
