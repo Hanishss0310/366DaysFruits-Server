@@ -1,3 +1,4 @@
+// (All your existing imports remain unchanged)
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
@@ -7,7 +8,6 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import jwt from 'jsonwebtoken';
 
-// ✅ Import Schemas
 import RegisterModel from './models/Schema.js';
 import ProductModel from './models/ProductsSchema.js';
 import NewsletterModel from './models/NewsLetterSchema.js';
@@ -20,22 +20,22 @@ const PORT = 4000;
 const DOMAIN = 'https://api.366daysfruit.com';
 const SECRET_KEY = 'fruitsecretkey';
 
-// ✅ Handle __dirname for ES module
+// __dirname workaround for ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Create uploads folder if not exists
+// Ensure uploads folder exists
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
-// ✅ MongoDB Connection
+// MongoDB Connection
 mongoose.connect('mongodb://127.0.0.1:27017/366DaysFruits', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 }).then(() => console.log('✅ MongoDB connected'))
   .catch((err) => console.error('❌ MongoDB connection error:', err));
 
-// ✅ Middleware
+// Middleware
 const allowedOrigins = [
   'https://daysfruits-userside.firebaseapp.com',
   'https://daysfruis-adminside.firebaseapp.com',
@@ -58,14 +58,14 @@ app.use(cors({
 app.use(express.json());
 app.use('/uploads', express.static(uploadsDir));
 
-// ✅ Multer setup
+// Multer setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
   filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
 const upload = multer({ storage });
 
-// ✅ JWT Auth Middleware
+// JWT Auth Middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader?.split(' ')[1];
@@ -79,7 +79,7 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// ✅ User Registration
+// User Registration
 app.post('/api/register', async (req, res) => {
   try {
     const { email, firstName, lastName, phone, shopName } = req.body;
@@ -103,7 +103,7 @@ app.get('/api/registers', async (req, res) => {
   }
 });
 
-// ✅ Fruits
+// Fruits CRUD
 app.post('/api/fruits', upload.single('image'), async (req, res) => {
   try {
     const { name, weight, pieces, boxWeight, boxPrice, rating, quantity } = req.body;
@@ -138,7 +138,7 @@ app.delete('/api/fruits/:id', async (req, res) => {
   }
 });
 
-// ✅ Newsletter
+// Newsletter
 app.post('/api/newsletter', async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required' });
@@ -162,7 +162,7 @@ app.get('/api/newsletter', async (req, res) => {
   }
 });
 
-// ✅ Upload Banner
+// Upload Banner
 app.post('/api/banner', upload.single('banner'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   const imageUrl = `${DOMAIN}/uploads/${req.file.filename}`;
@@ -195,7 +195,8 @@ app.get('/api/banners', async (req, res) => {
   }
 });
 
-// ✅ Order Route (Login Required)
+// ✅ Order Routes
+
 app.post('/api/order', authenticateToken, async (req, res) => {
   try {
     const { address, cartItems } = req.body;
@@ -222,12 +223,59 @@ app.post('/api/order', authenticateToken, async (req, res) => {
       items,
       totalAmount,
       orderedAt: new Date(),
+      status: "Pending" // Default status
     });
 
     await order.save();
     res.status(201).json({ message: 'Order saved successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// ✅ Update Order Status
+app.put('/api/order/status/:orderId', async (req, res) => {
+  const { orderId } = req.params;
+  const { status } = req.body;
+
+  try {
+    const order = await OrderModel.findByIdAndUpdate(orderId, { status }, { new: true });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    res.json({ message: 'Status updated successfully', order });
+  } catch (err) {
+    res.status(500).json({ message: 'Error updating status', error: err.message });
+  }
+});
+
+// ✅ Get All Orders
+app.get('/api/order', async (req, res) => {
+  try {
+    const orders = await OrderModel.find();
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ✅ Dashboard Data
+app.get('/api/dashboard', async (req, res) => {
+  try {
+    const totalOrders = await OrderModel.countDocuments();
+    const totalUsers = await RegisterModel.countDocuments();
+    const totalItems = await ProductModel.countDocuments();
+    const totalIncome = await OrderModel.aggregate([
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } }
+    ]);
+
+    res.json({
+      totalIncome: totalIncome[0]?.total || 0,
+      totalOrders,
+      totalUsers,
+      totalItems
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
@@ -251,38 +299,7 @@ app.get('/api/user/dashboard', authenticateToken, async (req, res) => {
   }
 });
 
-// ✅ All Orders (Admin)
-app.get('/api/order', async (req, res) => {
-  try {
-    const orders = await OrderModel.find();
-    res.json(orders);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// ✅ Dashboard Summary
-app.get('/api/dashboard', async (req, res) => {
-  try {
-    const totalOrders = await OrderModel.countDocuments();
-    const totalUsers = await RegisterModel.countDocuments();
-    const totalItems = await ProductModel.countDocuments();
-    const totalIncome = await OrderModel.aggregate([
-      { $group: { _id: null, total: { $sum: "$totalAmount" } } }
-    ]);
-
-    res.json({
-      totalIncome: totalIncome[0]?.total || 0,
-      totalOrders,
-      totalUsers,
-      totalItems
-    });
-  } catch (err) {
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
-
-// ✅ Recent members
+// ✅ Members List
 app.get('/api/members', async (req, res) => {
   try {
     const recentMembers = await RegisterModel.find({}, 'firstName lastName email phone').sort({ _id: -1 }).limit(10);
@@ -292,7 +309,7 @@ app.get('/api/members', async (req, res) => {
   }
 });
 
-// ✅ Signup
+// ✅ Signup / Login
 app.post('/api/users', async (req, res) => {
   try {
     const { username, phone, password } = req.body;
@@ -308,7 +325,6 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-// ✅ Login
 app.post('/api/users/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -336,7 +352,7 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
-// ✅ Get All Users (optional)
+// ✅ Get All Users
 app.get('/api/users', async (req, res) => {
   try {
     const users = await User.find();
