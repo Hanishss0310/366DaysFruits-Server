@@ -235,7 +235,6 @@ app.post('/api/order', authenticateToken, async (req, res) => {
 app.get('/api/user/dashboard', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-
     const user = await User.findById(userId).select('username phone');
 
     const thirtyDaysAgo = new Date();
@@ -330,10 +329,7 @@ app.post('/api/users/login', async (req, res) => {
     res.status(200).json({
       message: 'Login successful',
       token,
-      user: {
-        username: user.username,
-        phone: user.phone
-      }
+      user: { username: user.username, phone: user.phone }
     });
   } catch (err) {
     res.status(500).json({ message: 'Login failed.' });
