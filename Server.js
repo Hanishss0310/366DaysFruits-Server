@@ -1,4 +1,4 @@
-// (All your existing imports remain unchanged)
+// All required imports
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import jwt from 'jsonwebtoken';
 
+// Schema imports
 import RegisterModel from './models/Schema.js';
 import ProductModel from './models/ProductsSchema.js';
 import NewsletterModel from './models/NewsLetterSchema.js';
@@ -20,7 +21,7 @@ const PORT = 4000;
 const DOMAIN = 'https://api.366daysfruit.com';
 const SECRET_KEY = 'fruitsecretkey';
 
-// __dirname workaround for ES Modules
+// For __dirname in ES Module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -28,14 +29,14 @@ const __dirname = path.dirname(__filename);
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
-// MongoDB Connection
+// MongoDB connection
 mongoose.connect('mongodb://127.0.0.1:27017/366DaysFruits', {
   useNewUrlParser: true,
-  useUnifiedTopology: true
+  useUnifiedTopology: true,
 }).then(() => console.log('✅ MongoDB connected'))
-  .catch((err) => console.error('❌ MongoDB connection error:', err));
+  .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// Middleware
+// CORS settings
 const allowedOrigins = [
   'https://daysfruits-userside.firebaseapp.com',
   'https://daysfruis-adminside.firebaseapp.com',
@@ -46,11 +47,8 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+    else callback(new Error('Not allowed by CORS'));
   },
   credentials: true
 }));
@@ -79,7 +77,7 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// User Registration
+// ✅ User Registration & Members
 app.post('/api/register', async (req, res) => {
   try {
     const { email, firstName, lastName, phone, shopName } = req.body;
@@ -103,7 +101,16 @@ app.get('/api/registers', async (req, res) => {
   }
 });
 
-// Fruits CRUD
+app.get('/api/members', async (req, res) => {
+  try {
+    const recentMembers = await RegisterModel.find({}, 'firstName lastName email phone').sort({ _id: -1 }).limit(10);
+    res.json(recentMembers);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching members' });
+  }
+});
+
+// ✅ Fruits
 app.post('/api/fruits', upload.single('image'), async (req, res) => {
   try {
     const { name, weight, pieces, boxWeight, boxPrice, rating, quantity } = req.body;
@@ -138,7 +145,7 @@ app.delete('/api/fruits/:id', async (req, res) => {
   }
 });
 
-// Newsletter
+// ✅ Newsletter
 app.post('/api/newsletter', async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required' });
@@ -162,7 +169,7 @@ app.get('/api/newsletter', async (req, res) => {
   }
 });
 
-// Upload Banner
+// ✅ Banner Upload
 app.post('/api/banner', upload.single('banner'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   const imageUrl = `${DOMAIN}/uploads/${req.file.filename}`;
@@ -195,8 +202,7 @@ app.get('/api/banners', async (req, res) => {
   }
 });
 
-// ✅ Order Routes
-
+// ✅ Order APIs
 app.post('/api/order', authenticateToken, async (req, res) => {
   try {
     const { address, cartItems } = req.body;
@@ -223,7 +229,7 @@ app.post('/api/order', authenticateToken, async (req, res) => {
       items,
       totalAmount,
       orderedAt: new Date(),
-      status: "Pending" // Default status
+      status: 'Pending'
     });
 
     await order.save();
@@ -233,7 +239,6 @@ app.post('/api/order', authenticateToken, async (req, res) => {
   }
 });
 
-// ✅ Update Order Status
 app.put('/api/order/status/:orderId', async (req, res) => {
   const { orderId } = req.params;
   const { status } = req.body;
@@ -248,7 +253,6 @@ app.put('/api/order/status/:orderId', async (req, res) => {
   }
 });
 
-// ✅ Get All Orders
 app.get('/api/order', async (req, res) => {
   try {
     const orders = await OrderModel.find();
@@ -258,7 +262,7 @@ app.get('/api/order', async (req, res) => {
   }
 });
 
-// ✅ Dashboard Data
+// ✅ Dashboard Summary
 app.get('/api/dashboard', async (req, res) => {
   try {
     const totalOrders = await OrderModel.countDocuments();
@@ -299,21 +303,10 @@ app.get('/api/user/dashboard', authenticateToken, async (req, res) => {
   }
 });
 
-// ✅ Members List
-app.get('/api/members', async (req, res) => {
-  try {
-    const recentMembers = await RegisterModel.find({}, 'firstName lastName email phone').sort({ _id: -1 }).limit(10);
-    res.json(recentMembers);
-  } catch (err) {
-    res.status(500).json({ message: 'Error fetching members' });
-  }
-});
-
-// ✅ Signup / Login
+// ✅ User Signup / Login
 app.post('/api/users', async (req, res) => {
   try {
     const { username, phone, password } = req.body;
-
     const existingUser = await User.findOne({ phone });
     if (existingUser) return res.status(400).json({ message: 'Mobile number already registered.' });
 
@@ -328,13 +321,9 @@ app.post('/api/users', async (req, res) => {
 app.post('/api/users/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-
     const user = await User.findOne({ username });
     if (!user) return res.status(401).json({ message: 'User not found.' });
-
-    if (user.password !== password) {
-      return res.status(401).json({ message: 'Invalid password.' });
-    }
+    if (user.password !== password) return res.status(401).json({ message: 'Invalid password.' });
 
     const token = jwt.sign(
       { userId: user._id, username: user.username, phone: user.phone },
@@ -352,7 +341,6 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
-// ✅ Get All Users
 app.get('/api/users', async (req, res) => {
   try {
     const users = await User.find();
@@ -362,7 +350,7 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// ✅ Start Server
+// ✅ Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on ${DOMAIN}`);
 });
