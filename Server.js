@@ -79,8 +79,6 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-/* ------------------- API ROUTES ------------------- */
-
 // ✅ User Registration
 app.post('/api/register', async (req, res) => {
   try {
@@ -201,7 +199,7 @@ app.get('/api/banners', async (req, res) => {
 app.post('/api/order', authenticateToken, async (req, res) => {
   try {
     const { address, cartItems } = req.body;
-    const { username, phone } = req.user;
+    const { userId, username, phone } = req.user;
 
     if (!address || !Array.isArray(cartItems) || cartItems.length === 0) {
       return res.status(400).json({ message: 'All fields are required' });
@@ -217,6 +215,7 @@ app.post('/api/order', authenticateToken, async (req, res) => {
     const totalAmount = items.reduce((sum, item) => sum + item.totalCost, 0);
 
     const order = new OrderModel({
+      userId,
       name: username,
       address,
       phone,
@@ -229,6 +228,27 @@ app.post('/api/order', authenticateToken, async (req, res) => {
     res.status(201).json({ message: 'Order saved successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// ✅ User Dashboard
+app.get('/api/user/dashboard', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const user = await User.findById(userId).select('username phone');
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const orders = await OrderModel.find({
+      userId,
+      orderedAt: { $gte: thirtyDaysAgo }
+    });
+
+    res.status(200).json({ user, orders });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to load dashboard data', error: err.message });
   }
 });
 
