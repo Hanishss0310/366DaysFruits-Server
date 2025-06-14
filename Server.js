@@ -262,41 +262,55 @@ app.get('/api/members', async (req, res) => {
 });
 
 
-// Register New User
-app.post('/api/users', async (req, res) => {
-  const { username, phone, password } = req.body;
-
-  if (!username || !phone || !password) {
-    return res.status(400).json({ message: 'All fields are required.' });
-  }
-
+// GET all users
+app.get('/api/users', async (req, res) => {
   try {
-    const existingUser = await User.findOne({ phone });
-    if (existingUser) {
-      return res.status(409).json({ message: 'Mobile number already registered.' });
+    const users = await User.find({}, '-password'); // hide password
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: '❌ Server error' });
+  }
+});
+
+// POST - Signup
+app.post('/api/users', async (req, res) => {
+  try {
+    const { username, phone, password } = req.body;
+
+    if (!username || !phone || !password) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    const userExists = await User.findOne({ phone });
+    if (userExists) {
+      return res.status(400).json({ message: 'Mobile number already registered' });
     }
 
     const newUser = new User({ username, phone, password });
     await newUser.save();
-
-    res.status(201).json({ message: 'User registered successfully.' });
+    res.status(201).json({ message: 'User registered successfully' });
   } catch (err) {
-    console.error('❌ Error registering user:', err);
-    res.status(500).json({ message: 'Server error during registration.' });
+    res.status(500).json({ message: '❌ Signup failed' });
   }
 });
 
-// Get All Users
-app.get('/api/users', async (req, res) => {
+// POST - Login
+app.post('/api/users/login', async (req, res) => {
   try {
-    const allUsers = await User.find();
-    res.json(allUsers);
+    const { username, password } = req.body;
+
+    const user = await User.findOne({ username, password });
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    res.json({ success: true, user: { username: user.username, phone: user.phone } });
   } catch (err) {
-    console.error('❌ Error fetching users:', err);
-    res.status(500).json({ message: 'Error fetching users.' });
+    res.status(500).json({ success: false, message: '❌ Server error' });
   }
 });
 
+// ------------------------------------------------------------
 
 
 
