@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import jwt from 'jsonwebtoken';
 
-// Schemas
+// ✅ Import Schemas
 import RegisterModel from './models/Schema.js';
 import ProductModel from './models/ProductsSchema.js';
 import NewsletterModel from './models/NewsLetterSchema.js';
@@ -20,22 +20,22 @@ const PORT = 4000;
 const DOMAIN = 'https://api.366daysfruit.com';
 const SECRET_KEY = 'fruitsecretkey';
 
-// Handle __dirname
+// ✅ Handle __dirname for ES module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure uploads folder exists
+// ✅ Create uploads folder if not exists
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
-// MongoDB Connection
+// ✅ MongoDB Connection
 mongoose.connect('mongodb://127.0.0.1:27017/366DaysFruits', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 }).then(() => console.log('✅ MongoDB connected'))
   .catch((err) => console.error('❌ MongoDB connection error:', err));
 
-// CORS Whitelist
+// ✅ Middleware
 const allowedOrigins = [
   'https://daysfruits-userside.firebaseapp.com',
   'https://daysfruis-adminside.firebaseapp.com',
@@ -49,7 +49,6 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.error('Blocked by CORS:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -59,40 +58,40 @@ app.use(cors({
 app.use(express.json());
 app.use('/uploads', express.static(uploadsDir));
 
-// Multer Config
+// ✅ Multer setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
   filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
 const upload = multer({ storage });
 
-// JWT Middleware
+// ✅ JWT Auth Middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader?.split(' ')[1];
 
-  if (!token) return res.status(403).json({ message: 'Token required' });
+  if (!token) return res.status(401).json({ message: 'Access denied. Token missing.' });
 
   jwt.verify(token, SECRET_KEY, (err, user) => {
-    if (err) return res.status(403).json({ message: 'Invalid token' });
+    if (err) return res.status(403).json({ message: 'Invalid token.' });
     req.user = user;
     next();
   });
 };
 
-// Routes
+/* ------------------- API ROUTES ------------------- */
 
-// Register User
+// ✅ User Registration
 app.post('/api/register', async (req, res) => {
   try {
     const { email, firstName, lastName, phone, shopName } = req.body;
-    if (!email || !firstName || !lastName || !phone || !shopName)
+    if (!email || !firstName || !lastName || !phone || !shopName) {
       return res.status(400).json({ error: 'All fields are required' });
-
+    }
     const newUser = new RegisterModel({ email, firstName, lastName, phone, shopName });
     await newUser.save();
     res.status(201).json({ message: 'Registration successful' });
-  } catch {
+  } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -101,12 +100,12 @@ app.get('/api/registers', async (req, res) => {
   try {
     const users = await RegisterModel.find();
     res.json(users);
-  } catch {
+  } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Fruits CRUD
+// ✅ Fruits
 app.post('/api/fruits', upload.single('image'), async (req, res) => {
   try {
     const { name, weight, pieces, boxWeight, boxPrice, rating, quantity } = req.body;
@@ -114,7 +113,7 @@ app.post('/api/fruits', upload.single('image'), async (req, res) => {
     const newProduct = new ProductModel({ name, weight, pieces, boxWeight, boxPrice, rating, quantity, image });
     await newProduct.save();
     res.status(201).json({ message: 'Fruit added successfully' });
-  } catch {
+  } catch (err) {
     res.status(500).json({ error: 'Failed to add fruit' });
   }
 });
@@ -123,7 +122,7 @@ app.get('/api/fruits', async (req, res) => {
   try {
     const fruits = await ProductModel.find();
     res.json(fruits);
-  } catch {
+  } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -136,12 +135,12 @@ app.delete('/api/fruits/:id', async (req, res) => {
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     }
     res.json({ message: 'Fruit deleted successfully' });
-  } catch {
+  } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Newsletter
+// ✅ Newsletter
 app.post('/api/newsletter', async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required' });
@@ -151,7 +150,7 @@ app.post('/api/newsletter', async (req, res) => {
     const newEntry = new NewsletterModel({ email });
     await newEntry.save();
     res.status(201).json({ message: 'Subscribed successfully' });
-  } catch {
+  } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -160,12 +159,12 @@ app.get('/api/newsletter', async (req, res) => {
   try {
     const emails = await NewsletterModel.find();
     res.status(200).json(emails);
-  } catch {
+  } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Banners
+// ✅ Upload Banner
 app.post('/api/banner', upload.single('banner'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   const imageUrl = `${DOMAIN}/uploads/${req.file.filename}`;
@@ -184,7 +183,7 @@ app.post('/api/banner', upload.single('banner'), async (req, res) => {
     }
 
     res.status(201).json({ message: 'Banner uploaded', imageUrl });
-  } catch {
+  } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -193,19 +192,20 @@ app.get('/api/banners', async (req, res) => {
   try {
     const banners = await BannerModel.find().sort({ createdAt: 1 });
     res.status(200).json(banners);
-  } catch {
+  } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Order with Auth
+// ✅ Order Route (Login Required)
 app.post('/api/order', authenticateToken, async (req, res) => {
   try {
     const { address, cartItems } = req.body;
     const { username, phone } = req.user;
 
-    if (!address || !cartItems?.length)
-      return res.status(400).json({ message: 'Address and cart are required' });
+    if (!address || !Array.isArray(cartItems) || cartItems.length === 0) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
 
     const items = cartItems.map(item => ({
       name: item.name,
@@ -218,8 +218,8 @@ app.post('/api/order', authenticateToken, async (req, res) => {
 
     const order = new OrderModel({
       name: username,
-      phone,
       address,
+      phone,
       items,
       totalAmount,
       orderedAt: new Date(),
@@ -227,22 +227,22 @@ app.post('/api/order', authenticateToken, async (req, res) => {
 
     await order.save();
     res.status(201).json({ message: 'Order saved successfully' });
-  } catch {
+  } catch (err) {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
 
-// Get All Orders
+// ✅ All Orders (Admin)
 app.get('/api/order', async (req, res) => {
   try {
     const orders = await OrderModel.find();
     res.json(orders);
-  } catch {
+  } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Dashboard Summary
+// ✅ Dashboard Summary
 app.get('/api/dashboard', async (req, res) => {
   try {
     const totalOrders = await OrderModel.countDocuments();
@@ -251,68 +251,86 @@ app.get('/api/dashboard', async (req, res) => {
     const totalIncome = await OrderModel.aggregate([
       { $group: { _id: null, total: { $sum: "$totalAmount" } } }
     ]);
+
     res.json({
       totalIncome: totalIncome[0]?.total || 0,
       totalOrders,
       totalUsers,
       totalItems
     });
-  } catch {
+  } catch (err) {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
 
-// Recent Members
+// ✅ Recent members
 app.get('/api/members', async (req, res) => {
   try {
-    const members = await RegisterModel.find({}, 'firstName lastName email phone').sort({ _id: -1 }).limit(10);
-    res.json(members);
-  } catch {
+    const recentMembers = await RegisterModel.find({}, 'firstName lastName email phone').sort({ _id: -1 }).limit(10);
+    res.json(recentMembers);
+  } catch (err) {
     res.status(500).json({ message: 'Error fetching members' });
   }
 });
 
-// Signup + Login with JWT
+// ✅ Signup
 app.post('/api/users', async (req, res) => {
   try {
     const { username, phone, password } = req.body;
-    const existing = await User.findOne({ phone });
-    if (existing) return res.status(400).json({ message: 'Mobile already registered' });
 
-    const user = new User({ username, phone, password });
-    await user.save();
-    res.status(201).json({ message: 'User registered successfully' });
-  } catch {
-    res.status(500).json({ message: 'Signup failed' });
+    const existingUser = await User.findOne({ phone });
+    if (existingUser) return res.status(400).json({ message: 'Mobile number already registered.' });
+
+    const newUser = new User({ username, phone, password });
+    await newUser.save();
+    res.status(201).json({ message: 'User registered successfully!' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error while registering user.' });
   }
 });
 
+// ✅ Login
 app.post('/api/users/login', async (req, res) => {
   try {
     const { username, password } = req.body;
+
     const user = await User.findOne({ username });
-    if (!user) return res.status(401).json({ message: 'User not found' });
-    if (user.password !== password) return res.status(401).json({ message: 'Invalid password' });
+    if (!user) return res.status(401).json({ message: 'User not found.' });
 
-    const token = jwt.sign({ userId: user._id, username: user.username, phone: user.phone }, SECRET_KEY, { expiresIn: '2h' });
+    if (user.password !== password) {
+      return res.status(401).json({ message: 'Invalid password.' });
+    }
 
-    res.status(200).json({ message: 'Login successful', token, user: { username: user.username, phone: user.phone } });
-  } catch {
-    res.status(500).json({ message: 'Login failed' });
+    const token = jwt.sign(
+      { userId: user._id, username: user.username, phone: user.phone },
+      SECRET_KEY,
+      { expiresIn: '2h' }
+    );
+
+    res.status(200).json({
+      message: 'Login successful',
+      token,
+      user: {
+        username: user.username,
+        phone: user.phone
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Login failed.' });
   }
 });
 
-// Get All Users
+// ✅ Get All Users (optional)
 app.get('/api/users', async (req, res) => {
   try {
     const users = await User.find();
     res.json(users);
-  } catch {
+  } catch (err) {
     res.status(500).json({ message: 'Error fetching users' });
   }
 });
 
-// Start Server
+// ✅ Start Server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on ${DOMAIN}`);
 });
