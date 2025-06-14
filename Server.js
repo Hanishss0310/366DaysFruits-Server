@@ -273,7 +273,7 @@ app.get('/api/members', async (req, res) => {
   }
 });
 
-// ✅ Signup route
+// ✅ Signup
 app.post('/api/users', async (req, res) => {
   try {
     const { username, phone, password } = req.body;
@@ -289,7 +289,7 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-// ✅ Login route
+// ✅ Login
 app.post('/api/users/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -301,7 +301,6 @@ app.post('/api/users/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid password.' });
     }
 
-    // ✅ JWT Token
     const token = jwt.sign(
       { userId: user._id, username: user.username, phone: user.phone },
       SECRET_KEY,
