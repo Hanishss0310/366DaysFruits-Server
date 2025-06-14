@@ -1,4 +1,3 @@
-// server.js
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
@@ -6,6 +5,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import jwt from 'jsonwebtoken';
 
 // ✅ Import Schemas
 import RegisterModel from './models/Schema.js';
@@ -13,11 +13,12 @@ import ProductModel from './models/ProductsSchema.js';
 import NewsletterModel from './models/NewsLetterSchema.js';
 import BannerModel from './models/BannerSchema.js';
 import OrderModel from './models/Order.js';
-import User from './models/User.js'; // Make sure path is correct
+import User from './models/User.js';
 
 const app = express();
 const PORT = 4000;
-const DOMAIN = 'https://api.366daysfruit.com'; // ✅ use this throughout
+const DOMAIN = 'https://api.366daysfruit.com';
+const SECRET_KEY = 'fruitsecretkey';
 
 // ✅ Handle __dirname for ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -25,10 +26,7 @@ const __dirname = path.dirname(__filename);
 
 // ✅ Create uploads folder if not exists
 const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
-  console.log("📂 'uploads' folder created");
-}
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
 // ✅ MongoDB Connection
 mongoose.connect('mongodb://127.0.0.1:27017/366DaysFruits', {
@@ -66,6 +64,20 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
 const upload = multer({ storage });
+
+// ✅ JWT Auth Middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader?.split(' ')[1];
+
+  if (!token) return res.status(401).json({ message: 'Access denied. Token missing.' });
+
+  jwt.verify(token, SECRET_KEY, (err, user) => {
+    if (err) return res.status(403).json({ message: 'Invalid token.' });
+    req.user = user;
+    next();
+  });
+};
 
 /* ------------------- API ROUTES ------------------- */
 
@@ -118,11 +130,9 @@ app.get('/api/fruits', async (req, res) => {
 app.delete('/api/fruits/:id', async (req, res) => {
   try {
     const deleted = await ProductModel.findByIdAndDelete(req.params.id);
-    if (deleted && deleted.image) {
+    if (deleted?.image) {
       const filePath = path.join(uploadsDir, deleted.image);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     }
     res.json({ message: 'Fruit deleted successfully' });
   } catch (err) {
@@ -157,7 +167,7 @@ app.get('/api/newsletter', async (req, res) => {
 // ✅ Upload Banner
 app.post('/api/banner', upload.single('banner'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const imageUrl = `${DOMAIN}/uploads/${req.file.filename}`;  // ✅ FIXED: using DOMAIN
+  const imageUrl = `${DOMAIN}/uploads/${req.file.filename}`;
   try {
     const newBanner = new BannerModel({ imageUrl });
     await newBanner.save();
@@ -167,7 +177,7 @@ app.post('/api/banner', upload.single('banner'), async (req, res) => {
       const toDelete = allBanners.slice(0, allBanners.length - 5);
       for (const banner of toDelete) {
         const filePath = path.join(uploadsDir, path.basename(banner.imageUrl));
-        fs.unlink(filePath, (err) => err && console.error(err));
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
         await BannerModel.findByIdAndDelete(banner._id);
       }
     }
@@ -187,12 +197,13 @@ app.get('/api/banners', async (req, res) => {
   }
 });
 
-// ✅ Orders
-app.post('/api/order', async (req, res) => {
+// ✅ Order Route (Login Required)
+app.post('/api/order', authenticateToken, async (req, res) => {
   try {
-    const { name, address, phone, cartItems } = req.body;
+    const { address, cartItems } = req.body;
+    const { username, phone } = req.user;
 
-    if (!name || !address || !phone || !Array.isArray(cartItems) || cartItems.length === 0) {
+    if (!address || !Array.isArray(cartItems) || cartItems.length === 0) {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
@@ -206,7 +217,7 @@ app.post('/api/order', async (req, res) => {
     const totalAmount = items.reduce((sum, item) => sum + item.totalCost, 0);
 
     const order = new OrderModel({
-      name,
+      name: username,
       address,
       phone,
       items,
@@ -221,6 +232,7 @@ app.post('/api/order', async (req, res) => {
   }
 });
 
+// ✅ All Orders (Admin)
 app.get('/api/order', async (req, res) => {
   try {
     const orders = await OrderModel.find();
@@ -261,7 +273,6 @@ app.get('/api/members', async (req, res) => {
   }
 });
 
-
 // ✅ Signup route
 app.post('/api/users', async (req, res) => {
   try {
@@ -290,8 +301,16 @@ app.post('/api/users/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid password.' });
     }
 
+    // ✅ JWT Token
+    const token = jwt.sign(
+      { userId: user._id, username: user.username, phone: user.phone },
+      SECRET_KEY,
+      { expiresIn: '2h' }
+    );
+
     res.status(200).json({
       message: 'Login successful',
+      token,
       user: {
         username: user.username,
         phone: user.phone
@@ -302,7 +321,7 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
-// ✅ GET all users (for signup validation)
+// ✅ Get All Users (optional)
 app.get('/api/users', async (req, res) => {
   try {
     const users = await User.find();
@@ -312,9 +331,7 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-
-
-// ✅ Start server
+// ✅ Start Server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on ${DOMAIN}`);
 });
